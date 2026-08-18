@@ -1,67 +1,67 @@
-name: Custom Windows Client Generator
-run-name: Custom Windows Client Generator
-on: 
-  workflow_dispatch:
-    inputs:
-      server:
-        description: 'Rendezvous Server'
-        required: true
-        default: ''
-        type: string
-      key:
-        description: 'Public Key'
-        required: true
-        default: ''
-        type: string
-      apiServer:
-        description: 'API Server'
-        required: true
-        default: ''
-        type: string
-      custom:
-        description: "Custom JSON"
-        required: true
-        default: ''
-        type: string
-      uuid:
-        description: "uuid of request"
-        required: true
-        default: ''
-        type: string
-      iconlink:
-        description: "icon link"
-        required: false
-        default: 'false'
-        type: string
-      logolink:
-        description: "logo link"
-        required: false
-        default: 'false'
-        type: string
-      appname:
-        description: "app name"
-        required: true
-        default: 'rustdesk'
-        type: string
-      filename:
-        description: "Filename"
-        required: true
-        default: 'rustdesk'
-        type: string
-      extras:
-        description: "extra inputs in json"
-        required: true
-        default: '{}'
-        type: string
+名称：自定义 Windows 客户端生成器: Custom Windows Client Generator
+运行名称：自定义 Windows 客户端生成器: Custom Windows Client Generator
+在：: 
+  workflow_dispatch::
+    输入：:
+      服务器::
+        描述：'Rendezvous Server': 'Rendezvous Server'
+        必填：是uired: true
+        默认: '': ''
+        类型：字符串: string
+      键：:
+        描述：'公钥': 'Public Key'
+        必填：是uired: true
+        默认: '': ''
+        类型：字符串: string
+      apiServer::
+        描述：'API 服务器': 'API Server'
+        必填：是uired: true
+        默认: '': ''
+        类型：字符串: string
+      自定义：:
+        描述: "自定义 JSON": "Custom JSON"
+        必填：是uired: true
+        默认: '': ''
+        类型：字符串: string
+      uuid:uid:
+        描述: "请求的uuid": "uuid of request"
+        必填：是uired: true
+        默认: ''ult: ''
+        类型：字符串: string
+      图标链接：:
+        描述: "图标链接": "icon link"
+        必填：否uired: false
+        默认值：'false'ult: 'false'
+        类型：字符串: string
+      logolink::
+        描述: "logo 链接": "logo link"
+        必填：否uired: false
+        默认值：'false'ult: 'false'
+        类型：字符串: string
+      应用名称::
+        描述: "应用名称": "app name"
+        必填：是uired: true
+        默认: 'rustdesk'ult: 'rustdesk'
+        类型：字符串: string
+      文件名::
+        描述: "文件名": "Filename"
+        必填：是uired: true
+        默认: 'rustdesk'ult: 'rustdesk'
+        类型：字符串: string
+      附加内容：:
+        描述: "json中的额外输入": "extra inputs in json"
+        必填：是uired: true
+        默认值：'{}'ult: '{}'
+        类型：字符串: string
 
 
-env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  CARGO_NDK_VERSION: "3.1.2"
-  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
+环境：:
+  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503，此外 1.78 引入了 ABI 变更，导致我们的 sciter 版本无法正常工作，https://blog.rust-lang.org/2024/03/30/i128-layout-update.htmlUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  RUST_VERSION: "1.75" # sciter 在 m1 上使用 1.78 时因 https://blog.rust-lang.org/2024/03/30/i128-layout-update.html 而失败: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+: "3.1.2": "3.1.2"
+  SCITER_ARMV7_CMAKE_VERSION: "3.29.7": "3.29.7"
   SCITER_NASM_DEBVERSION: "2.15.05-1"
-  LLVM_VERSION: "15.0.6"
+: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
   # for arm64 linux because official Dart SDK does not work
@@ -390,14 +390,18 @@ jobs:
 
 
       - name: ui.rs icon
-        if: ${{ inputs.iconlink != 'false' }}
-        continue-on-error: true
+        if: ${{ inputs.iconlink == 'true' }}
         shell: bash
         run: |
-          cp ./src/ui.rs ./src/ui.rs.bak
-          b64=$(base64 -w0 < ./res/icon.png)
-          perl -0777 -pe "s|iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL[A-Za-z0-9+/=]+|$b64|g" -i.bak ./src/ui.rs
-          b64=""
+          if [ ! -f "./res/icon.png" ]; then
+            echo "::error::icon.png missing after magick step"
+            exit 1
+          fi
+          b64=$(base64 -w0 ./res/icon.png)
+          perl -i.bak -pe '
+            BEGIN { $b64 = shift @ARGV }
+            s/iVBORw0KGgo[A-Za-z0-9+\/=]{100,}/$b64/g;
+          ' "$b64" ./src/ui.rs
 
       - name: fix connection delay
         continue-on-error: true
